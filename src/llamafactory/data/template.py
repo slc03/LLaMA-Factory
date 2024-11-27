@@ -1244,3 +1244,10 @@ _register_template(
     format_user=StringFormatter(slots=["<human>:{{content}}\n<bot>:"]),
     format_separator=EmptyFormatter(slots=["\n"]),
 )
+
+
+_register_template(
+    name="my_llm",
+    format_user=StringFormatter(slots=["<|begin▁of▁sentence|>{{content}}<|begin▁of▁sentence|>"]),
+    format_separator=EmptyFormatter(slots=["<|end▁of▁sentence|>"]),
+)
