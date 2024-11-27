@@ -78,9 +78,35 @@ class PairwiseTrainer(Trainer):
         create_custom_scheduler(self.args, num_training_steps, optimizer)
         return super().create_scheduler(num_training_steps, optimizer)
 
+    # @override
+    # def compute_loss(
+    #     self, model: "PreTrainedModel", inputs: Dict[str, "torch.Tensor"], return_outputs: bool = False
+    # ) -> Union["torch.Tensor", Tuple["torch.Tensor", List["torch.Tensor"]]]:
+    #     r"""
+    #     Computes pairwise loss. The first n examples are chosen and the last n examples are rejected.
+
+    #     Subclass and override to inject custom behavior.
+
+    #     Note that the first element will be removed from the output tuple.
+    #     See: https://github.com/huggingface/transformers/blob/v4.40.0/src/transformers/trainer.py#L3842
+    #     """
+    #     _, _, values = model(**inputs, output_hidden_states=True, return_dict=True, use_cache=False)
+    #     batch_size = inputs["input_ids"].size(0) // 2
+    #     chosen_masks, rejected_masks = torch.split(inputs["attention_mask"], batch_size, dim=0)
+    #     chosen_rewards, rejected_rewards = torch.split(values, batch_size, dim=0)
+    #     chosen_scores = chosen_rewards.gather(dim=-1, index=(chosen_masks.sum(dim=-1, keepdim=True) - 1))
+    #     rejected_scores = rejected_rewards.gather(dim=-1, index=(rejected_masks.sum(dim=-1, keepdim=True) - 1))
+    #     chosen_scores, rejected_scores = chosen_scores.squeeze(), rejected_scores.squeeze()
+
+    #     loss = -torch.nn.functional.logsigmoid(chosen_scores.float() - rejected_scores.float()).mean()
+    #     if return_outputs:
+    #         return loss, (loss, chosen_scores, rejected_scores)
+    #     else:
+    #         return loss
+        
     @override
     def compute_loss(
-        self, model: "PreTrainedModel", inputs: Dict[str, "torch.Tensor"], return_outputs: bool = False, **kwargs
+        self, model: "PreTrainedModel", inputs: Dict[str, "torch.Tensor"], return_outputs: bool = False
     ) -> Union["torch.Tensor", Tuple["torch.Tensor", List["torch.Tensor"]]]:
         r"""
         Computes pairwise loss. The first n examples are chosen and the last n examples are rejected.
@@ -90,19 +116,13 @@ class PairwiseTrainer(Trainer):
         Note that the first element will be removed from the output tuple.
         See: https://github.com/huggingface/transformers/blob/v4.40.0/src/transformers/trainer.py#L3842
         """
-        _, _, values = model(**inputs, output_hidden_states=True, return_dict=True, use_cache=False)
+        outputs = model(**inputs, output_hidden_states=False, return_dict=False, use_cache=False)
+        scores = outputs[0].squeeze()
+        
         batch_size = inputs["input_ids"].size(0) // 2
-        chosen_masks, rejected_masks = torch.split(inputs["attention_mask"], batch_size, dim=0)
-        chosen_rewards, rejected_rewards = torch.split(values, batch_size, dim=0)
-        chosen_scores = chosen_rewards.gather(dim=-1, index=(chosen_masks.sum(dim=-1, keepdim=True) - 1))
-        rejected_scores = rejected_rewards.gather(dim=-1, index=(rejected_masks.sum(dim=-1, keepdim=True) - 1))
-        chosen_scores, rejected_scores = chosen_scores.squeeze(), rejected_scores.squeeze()
+        chosen_scores, rejected_scores = torch.split(scores, batch_size, dim=0)
 
         loss = -torch.nn.functional.logsigmoid(chosen_scores.float() - rejected_scores.float()).mean()
-
-        if is_transformers_version_equal_to_4_46() and kwargs.pop("num_items_in_batch", False):
-            loss /= self.args.gradient_accumulation_steps  # fixes the loss value for transformers 4.46.0
-
         if return_outputs:
             return loss, (loss, chosen_scores, rejected_scores)
         else:
