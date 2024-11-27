@@ -152,7 +152,7 @@ def load_model(
             if type(config) in AutoModelForVision2Seq._model_mapping.keys():  # assume built-in models
                 load_class = AutoModelForVision2Seq
             else:
-                load_class = AutoModelForCausalLM
+                load_class = AutoModel
 
             if model_args.train_from_scratch:
                 model = load_class.from_config(config, trust_remote_code=True)
