@@ -43,7 +43,7 @@ def run_rm(
     tokenizer = tokenizer_module["tokenizer"]
     template = get_template_and_fix_tokenizer(tokenizer, data_args)
     dataset_module = get_dataset(template, model_args, data_args, training_args, stage="rm", **tokenizer_module)
-    model = load_model(tokenizer, model_args, finetuning_args, training_args.do_train, add_valuehead=True)
+    model = load_model(tokenizer, model_args, finetuning_args, training_args.do_train, add_valuehead=False)
     data_collator = PairwiseDataCollatorWithPadding(template=template, pad_to_multiple_of=8, **tokenizer_module)
 
     # Update arguments
