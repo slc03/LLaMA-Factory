@@ -63,6 +63,9 @@ def fix_valuehead_checkpoint(
 
     We assume `stage3_gather_16bit_weights_on_model_save=true`.
     """
+    if not hasattr(model, "pretrained_model"):
+        return
+        
     if not isinstance(model.pretrained_model, (PreTrainedModel, PeftModel)):
         return
 
