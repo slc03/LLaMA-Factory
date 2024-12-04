@@ -144,8 +144,8 @@ class PairwiseDataCollatorWithPadding(MultiModalDataCollatorForSeq2Seq):
         the last n examples represent rejected examples.
         """
         concatenated_features = []
-        for key in ("chosen", "rejected"):
-            for feature in features:
+        for feature in features:
+            for key in ("chosen", "rejected"):
                 target_feature = {
                     "input_ids": feature[f"{key}_input_ids"],
                     "attention_mask": feature[f"{key}_attention_mask"],
