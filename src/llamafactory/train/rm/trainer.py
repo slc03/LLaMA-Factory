@@ -120,7 +120,8 @@ class PairwiseTrainer(Trainer):
         scores = outputs[0].squeeze()
         
         batch_size = inputs["input_ids"].size(0) // 2
-        chosen_scores, rejected_scores = torch.split(scores, batch_size, dim=0)
+        rejected_scores = scores[1::2]
+        chosen_scores = scores[0::2]
 
         loss = -torch.nn.functional.logsigmoid(chosen_scores.float() - rejected_scores.float()).mean()
         if return_outputs:
