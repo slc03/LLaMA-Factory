@@ -68,6 +68,20 @@ def prepare_4d_attention_mask(attention_mask_with_indices: "torch.Tensor", dtype
     return attention_mask_4d
 
 
+def concatenate_rows(tensor):
+    """
+    将张量堆叠。
+    
+    Args:
+        tensor (torch.Tensor): 拼接后=前的张量，形状为 (m, n)。
+    
+    Returns:
+        torch.Tensor: 拼接后的张量，形状为 (m/2, 2n)。
+    """
+    m, n = tensor.shape
+    return torch.cat((tensor[:m//2], tensor[m//2:]), dim=1)
+
+
 @dataclass
 class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
     r"""
@@ -147,15 +161,21 @@ class PairwiseDataCollatorWithPadding(MultiModalDataCollatorForSeq2Seq):
         for key in ("chosen", "rejected"):
             for feature in features:
                 target_feature = {
-                    "input_ids": feature[f"{key}_input_ids"],
-                    "attention_mask": feature[f"{key}_attention_mask"],
-                    "labels": feature[f"{key}_labels"],
+                    "input_ids": feature["{}_input_ids".format(key)],
+                    "attention_mask": feature["{}_attention_mask".format(key)],
+                    "labels": feature["{}_labels".format(key)],
                     "images": feature["images"],
                     "videos": feature["videos"],
                 }
                 concatenated_features.append(target_feature)
 
-        return super().__call__(concatenated_features)
+        result = super().__call__(concatenated_features)
+        
+        # 张量堆叠
+        result["input_ids"] = concatenate_rows(result["input_ids"])
+        result["attention_mask"] = concatenate_rows(result["attention_mask"])
+        result["labels"] = concatenate_rows(result["labels"])
+        return result
 
 
 @dataclass
