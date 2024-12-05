@@ -40,6 +40,23 @@ if TYPE_CHECKING:
 logger = logging.get_logger(__name__)
 
 
+def restore_direct_concat(tensor):
+    """
+    将张量还原为原始形状。
+    
+    Args:
+        tensor (torch.Tensor): 拼接后的张量，形状为 (m/2, 2n)。
+    
+    Returns:
+        torch.Tensor: 还原后的张量，形状为 (m, n)。
+    """
+    m, n = tensor.shape
+    left_part = tensor[:, :n//2]  # 左半部分
+    right_part = tensor[:, n//2:]  # 右半部分
+    restored_tensor = torch.cat((left_part, right_part), dim=0)
+    return restored_tensor
+
+
 class PairwiseTrainer(Trainer):
     r"""
     Inherits Trainer to compute pairwise loss.
@@ -116,6 +133,11 @@ class PairwiseTrainer(Trainer):
         Note that the first element will be removed from the output tuple.
         See: https://github.com/huggingface/transformers/blob/v4.40.0/src/transformers/trainer.py#L3842
         """
+        # 张量还原
+        inputs["input_ids"] = restore_direct_concat(inputs["input_ids"])
+        inputs["attention_mask"] = restore_direct_concat(inputs["attention_mask"])
+        inputs["labels"] = restore_direct_concat(inputs["labels"])
+        
         outputs = model(**inputs, output_hidden_states=False, return_dict=False, use_cache=False)
         scores = outputs[0].squeeze()
         
